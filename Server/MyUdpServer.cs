@@ -13,6 +13,5 @@ public class MyUdpServer : UdpServer
         this.PacketHandlerManager = new PacketHandlerManager(this, this.PacketSerializer);
         this.PacketHandlerManager.RegisterPacketReceivedHandler(new LoginHandler());
         this.PacketHandlerManager.RegisterPacketReceivedHandler(new TimeoutHandler());
-        this.PacketHandlerManager.RegisterPacketReceivedHandler(new VoiceDataHandler());
     }
 }

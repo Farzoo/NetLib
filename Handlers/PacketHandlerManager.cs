@@ -1,4 +1,6 @@
-﻿using NetLib.Packets.Shared;
+﻿using System.Collections.Generic;
+using System.Linq;
+using NetLib.Packets.Shared;
 using NetLib.Server;
 
 namespace NetLib.Handlers;
@@ -65,7 +67,6 @@ public class PacketHandlerManager
     public void OnReceive(BaseClient baseBaseClient, byte[] data)
     {
         PacketBase packet = this.Serializer.Deserialize(data);
-        //Console.WriteLine($"Reception d'un paquet : {packet.GetType().Name}");
         this.ReceivedHandlers.TryGetValue(packet.Id, out var handlers);
         handlers?.ToList().ForEach(x => x.OnPacketReceived(baseBaseClient, packet));
     }

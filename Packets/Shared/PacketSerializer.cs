@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.Remoting.Contexts;
+using ChatAppUtils;
 using Microsoft.IO;
 using ProtoBuf;
 using ProtoBuf.Meta;
@@ -12,60 +14,6 @@ public interface IPacketSerializer<T> where T : PacketBase
     T Deserialize(byte[] data);
     
     ushort GetPacketId(byte[] data);
-}
-
-public class PacketSerializer<T>
-    : IPacketSerializer<T>
-    where T : PacketBase
-{
-    public PacketSerializer()
-    {
-        this.CheckType();
-        this.RegisterTypeForBaseType();
-    }
-    
-    private void CheckType()
-    {
-        bool hasParameterlessConstructor = typeof(T).GetConstructors().Any(c => c.GetParameters().Length == 0);
-        if(!hasParameterlessConstructor)
-            throw new Exception("Packet type must have a parameterless constructor");
-    }
-    private ushort RegisterTypeForBaseType()
-    {
-        PacketInfo? packetInfo = typeof(T).GetCustomAttribute<PacketInfo>(false);
-        if (packetInfo == null)
-            throw new Exception("Packet must have PacketInfo attribute");
-        MetaType thisType = RuntimeTypeModel.Default[typeof(T)];
-        MetaType baseType = RuntimeTypeModel.Default[typeof(T).BaseType];
-        if (baseType.GetSubtypes().All(s => s.DerivedType != thisType))
-        {
-            if(baseType.GetSubtypes().Any(s => s.FieldNumber == packetInfo.Id))
-                throw new Exception("Packet id already registered for another packet");
-            baseType.AddSubType(packetInfo.Id + 1, typeof(T));
-        }
-        return packetInfo.Id;
-    }
-    public byte[] Serialize(T packet)
-    {
-        using MemoryStream stream = new MemoryStream();
-        stream.Write(BitConverter.GetBytes(packet.Id), 0, sizeof(ushort));
-        ProtoBuf.Serializer.Serialize(stream, packet);
-        return stream.ToArray();
-    }
-
-    public T Deserialize(byte[] data)
-    {
-        using MemoryStream stream = new MemoryStream(data);
-        stream.Seek(sizeof(ushort), SeekOrigin.Begin);
-        return ProtoBuf.Serializer.Deserialize<T>(stream);
-    }
-
-    public ushort GetPacketId(byte[] data)
-    {
-        using MemoryStream stream = new MemoryStream(data);
-        using BinaryReader reader = new BinaryReader(stream);
-        return reader.ReadUInt16();
-    }
 }
 
 public interface IPacketSerializer
@@ -120,7 +68,17 @@ public class PacketSerializer : IPacketSerializer
         ushort length = reader.ReadUInt16();
         ushort id = reader.ReadUInt16();
         Type? type = this.Mapper.GetType(id);
-        if (type == null) return new UnknownPacket();
+
+        if (type == null)
+        {
+            throw new PacketDeserializationException($"Invalid packet id {id} bytes: {BitConverter.ToString(data)}");
+        }
+        
+        if(length != data.Length)
+        {
+            throw new PacketDeserializationException($"Invalid packet length {length} bytes: {BitConverter.ToString(data)}");
+        }
+        
         reader.BaseStream.SetLength(length);
         reader.BaseStream.Seek(sizeof(ushort)*2, SeekOrigin.Begin);
         return ProtoBuf.Serializer.NonGeneric.Deserialize(type, stream) as PacketBase ?? new UnknownPacket();

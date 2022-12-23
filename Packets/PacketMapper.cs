@@ -23,7 +23,7 @@ public class PacketMapper : IPacketMapper
     
     public Type? GetType(ushort id)
     {
-        return this.Mapper[id];
+        return this.Mapper.TryGetValue(id, out var type) ? type : null;
     }
     
     public List<Type> GetTypes()

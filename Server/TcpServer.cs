@@ -9,7 +9,6 @@ public class TcpServer : BaseServer
 {
     public TcpServer(IPEndPoint hostIp, IPacketMapper packetMapper, IPacketSerializer packetSerializer) : base(hostIp, SocketType.Stream, ProtocolType.Tcp, packetMapper, packetSerializer)
     {
-        Console.WriteLine($"{this.Socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress)}");
     }
 
     protected override void ListenConnection()

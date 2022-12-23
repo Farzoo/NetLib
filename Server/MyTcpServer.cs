@@ -14,6 +14,6 @@ public class MyTcpServer : TcpServer
     {
         this.PacketHandlerManager = new PacketHandlerManager(this, this.PacketSerializer);
         this.PacketHandlerManager.RegisterPacketReceivedHandler(new LoginHandler());
-        this.PacketHandlerManager.RegisterPacketReceivedHandler(new VoiceDataHandler());
+        this.PacketHandlerManager.RegisterPacketReceivedHandler(new VoiceDataBroadcastHandler(this));
     }
 }

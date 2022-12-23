@@ -4,13 +4,31 @@
         <TargetFramework>net472</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>10</LangVersion>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+      <PlatformTarget>AnyCPU</PlatformTarget>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+      <PlatformTarget>AnyCPU</PlatformTarget>
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="CSCore" Version="1.2.1.2" />
+      <PackageReference Include="CSCore.Opus" Version="1.0.1" />
       <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="2.2.1" />
+      <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.4.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
       <PackageReference Include="NAudio" Version="2.1.0" />
-      <PackageReference Include="protobuf-net" Version="3.1.31-g739615ac23" />
+      <PackageReference Include="NAudio.Core" Version="2.1.0" />
+      <PackageReference Include="protobuf-net" Version="3.1.26" />
+      <PackageReference Include="protobuf-net.Core" Version="3.1.31-g739615ac23" />
       <PackageReference Include="System.Net.Http" Version="4.3.4" />
     </ItemGroup>
 

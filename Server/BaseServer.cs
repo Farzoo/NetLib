@@ -10,7 +10,7 @@ public abstract class BaseServer : IClientEvent
     protected Socket Socket { get; }
     
     protected IPEndPoint HostIpEndPoint { get; }
-    protected List<BaseClient> Clients { get; }
+    protected ISet<BaseClient> Clients { get; }
     public bool IsRunning { get; private set; }
     
     protected IPacketMapper PacketMapper { get; }
@@ -24,8 +24,10 @@ public abstract class BaseServer : IClientEvent
     public BaseServer(IPEndPoint hostIp, SocketType socketType, ProtocolType protocolType, IPacketMapper packetMapper, IPacketSerializer packetSerializer)
     {
         this.HostIpEndPoint = hostIp;
-        this.Socket = new Socket(hostIp.AddressFamily, socketType, protocolType);
-        this.Clients = new List<BaseClient>();
+        this.Socket = new Socket(AddressFamily.InterNetworkV6, socketType, protocolType);
+        this.Socket.DualMode = true;
+        this.Socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
+        this.Clients = new HashSet<BaseClient>();
         this.PacketMapper = packetMapper;
         this.PacketSerializer = packetSerializer;
     }
@@ -57,6 +59,7 @@ public abstract class BaseServer : IClientEvent
 
     public virtual void Broadcast<T>(T packet, BaseClient? except = null) where T : PacketBase
     {
+
         foreach (BaseClient client in this.Clients)
         {
             if (client != except)

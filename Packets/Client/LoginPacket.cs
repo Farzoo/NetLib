@@ -11,8 +11,7 @@ public class LoginPacket : PacketBase
     public string Username { get; }
     [ProtoMember(2)]
     public string Password { get; }
-
-    //public override ushort Size => (ushort) (base.Size + Username.Length + Password.Length + 2);
+    
     public override ushort Id => (ushort) PacketType.Login;
 
     public LoginPacket() : base()
@@ -20,7 +19,7 @@ public class LoginPacket : PacketBase
         this.Username = String.Empty;
         this.Password = String.Empty;
     }
-    public LoginPacket(string username, string password) : base()
+    public LoginPacket(string username, string password)
     {
         this.Username = username;
         this.Password = password;
