@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Concentus.Enums;
 using Concentus.Structs;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -8,52 +9,106 @@ using NetLib.Server;
 
 namespace NetLib.Handlers;
 
-public class VoiceDataHandler : IPacketReceivedHandler
+public class VoiceDataHandler
 {
-    private WaveFormat WaveFormat { get; } = new WaveFormat(48000, 16, 1);
-    private WaveOutEvent WaveOut { get; }
-    private int FrameSize { get; }
-    private int Latency => 20;
-    private int DurationMultiplier => 3;
+    private WaveFormat WaveFormat { get; }
+    public int FrameSize { get; }
+    public int Latency { get; }
+    public int DurationMultiplier { get; }
+    
     private short[] PcmBuffer { get; }
+    private byte[] OpusBuffer { get; }
+    
     private OpusDecoder Decoder { get; }
-    private BufferedWaveProvider BufferedWaveProvider { get; }
-    
-    public VoiceDataHandler()
+    private OpusEncoder Encoder { get; }
+
+    public VoiceDataHandler(WaveFormat waveFormat, int latency, int durationMultiplier)
     {
-        this.WaveOut = new WaveOutEvent();
-        this.Decoder = new OpusDecoder(this.WaveFormat.SampleRate, this.WaveFormat.Channels);
+        this.WaveFormat = waveFormat;
+        this.Latency = latency;
+        this.DurationMultiplier = durationMultiplier;
+        
+        this.FrameSize = this.WaveFormat.ConvertLatencyToByteSize(this.Latency * this.DurationMultiplier);
+        
+        this.PcmBuffer = new short[this.FrameSize];
+        this.OpusBuffer = new byte[this.FrameSize];
 
-        this.FrameSize = this.WaveFormat.SampleRate * this.WaveFormat.Channels * this.Latency / 1000;
-        this.PcmBuffer = new short[this.FrameSize * this.DurationMultiplier];
-        this.WaveOut.DesiredLatency = this.Latency * this.DurationMultiplier;
-
-        this.BufferedWaveProvider = new BufferedWaveProvider(this.WaveFormat);
-        this.BufferedWaveProvider.DiscardOnBufferOverflow = true;
-        this.BufferedWaveProvider.BufferDuration = TimeSpan.FromMilliseconds(this.Latency * this.DurationMultiplier);
-        this.WaveOut.Init(this.BufferedWaveProvider);
+        this.Decoder = OpusDecoder.Create(this.WaveFormat.SampleRate, this.WaveFormat.Channels);
+        this.Encoder = OpusEncoder.Create(this.WaveFormat.SampleRate, this.WaveFormat.Channels, OpusApplication.OPUS_APPLICATION_VOIP);
     }
-    
-    private Stopwatch Stopwatch { get; } = new Stopwatch();
 
-    public void OnPacketReceived(BaseClient baseClient, PacketBase packet)
+    /**
+     * Returns a span of the encoded voice data. The span is a view on the internal buffer, so it is only valid until the next call to this method.
+     * No memory allocation is done for each call.
+     */
+    public Span<byte> DecodeVoiceData(VoiceDataPacket voiceDataPacket)
     {
-        if (packet is not VoiceDataPacket voiceDataPacket) return;
         int pcmOffset = 0;
-        int encodedOffset = 0;
-        this.Stopwatch.Restart();
+        int opusOffset = 0;
         for (int i = 0; i < voiceDataPacket.DataOffsets.Length; i++)
         {
-            int decoded = this.Decoder.Decode(voiceDataPacket.Data, encodedOffset, voiceDataPacket.DataOffsets[i], this.PcmBuffer, pcmOffset, this.FrameSize, false);
-            pcmOffset += decoded;
-            encodedOffset += voiceDataPacket.DataOffsets[i];
+            pcmOffset += this.Decoder.Decode(voiceDataPacket.Data, opusOffset, voiceDataPacket.DataOffsets[i],
+                this.PcmBuffer, pcmOffset, this.FrameSize);
+            opusOffset += voiceDataPacket.DataOffsets[i];
         }
-        //Console.WriteLine($"Decoded {pcmOffset} bytes in {this.Stopwatch.ElapsedMilliseconds}ms");
-        Span<byte> pcm = MemoryMarshal.Cast<short, byte>(this.PcmBuffer);
-        this.BufferedWaveProvider.AddSamples(pcm.ToArray(), 0, pcm.Length);
-        MixingSampleProvider mixingSampleProvider = new MixingSampleProvider(this.WaveFormat);
-        this.WaveOut.Play();
+        return MemoryMarshal.Cast<short, byte>(this.PcmBuffer.AsSpan(0, pcmOffset));
+    }
+    
+    /**
+     * Returns a span of the encoded voice data. The span is a view on the internal buffer, so it is only valid until the next call to this method.
+     * No memory allocation is done for each call.
+     */
+    public Span<byte> EncodeVoiceData(Span<byte> pcm, out int[] offsets)
+    {
+        short[] data = MemoryMarshal.Cast<byte, short>(pcm).ToArray();
+        int offset = 0;
+        int pcmSliceSize = this.FrameSize / this.DurationMultiplier / 2; // We need to divide by 2 because we are working with shorts
+        int[] bufferOffsets = new int[this.DurationMultiplier];
+        
+        Array.Clear(this.OpusBuffer, 0, this.OpusBuffer.Length);
+        
+        for (int i = 0; i < this.DurationMultiplier; i++)
+        {
+            bufferOffsets[i] = Encoder.Encode(
+                data, 
+                i * pcmSliceSize, 
+                pcmSliceSize, this.OpusBuffer,
+                offset, 
+                this.OpusBuffer.Length - (i * pcmSliceSize)
+            );
+            offset += bufferOffsets[i];
+        }
 
+        offsets = bufferOffsets;
+        return this.OpusBuffer.AsSpan(0, offset);
+    }
+}
+
+public class VoiceDataClientHandler : IPacketReceivedHandler
+{
+    private VoiceDataHandler VoiceDataHandler { get; }
+    private WaveFormat WaveFormat { get; }
+    private WaveOutEvent WaveOut { get; }
+    
+    private BufferedWaveProvider BufferedWaveProvider { get; }
+
+    public VoiceDataClientHandler()
+    {
+        this.WaveFormat = new WaveFormat(48000, 16, 1);
+        this.VoiceDataHandler = new VoiceDataHandler(this.WaveFormat, 20, 3);
+        this.BufferedWaveProvider = new BufferedWaveProvider(this.WaveFormat);
+        this.BufferedWaveProvider.BufferDuration = TimeSpan.FromMilliseconds(this.VoiceDataHandler.Latency * this.VoiceDataHandler.DurationMultiplier);
+        this.BufferedWaveProvider.BufferLength = this.VoiceDataHandler.FrameSize * this.VoiceDataHandler.DurationMultiplier * 5;
+        this.WaveOut = new WaveOutEvent();
+        this.WaveOut.Init(this.BufferedWaveProvider);
+    }
+    public void OnPacketReceived(BaseClient baseClient, PacketBase packet)
+    {
+        if(packet is not VoiceDataPacket voiceDataPacket) return;
+        //Console.WriteLine($"Received voice data packet with {voiceDataPacket.Data.Length} and sequence {voiceDataPacket.Sequence}");
+        byte[] pcm = this.VoiceDataHandler.DecodeVoiceData(voiceDataPacket).ToArray();
+        this.BufferedWaveProvider.AddSamples(pcm, 0, pcm.Length);
+        this.WaveOut.Play();
     }
 
     public ushort PacketId => (ushort) PacketType.VoiceData;
