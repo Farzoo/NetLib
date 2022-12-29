@@ -7,14 +7,14 @@ public class PacketMapper : IPacketMapper
 {
     private IDictionary<ushort, Type> Mapper { get; } = new Dictionary<ushort, Type>();
     
-    public IPacketMapper Register<T>() where T : PacketBase
+    public IPacketMapper Register<T>() where T : PacketBase, new()
     {
-        if (!this.GetId<T>(out var id)) throw new ArgumentException($"{typeof(T).Name} does not have a PacketInfo attribute.");
+        if (!GetId<T>(out var id)) throw new ArgumentException($"{typeof(T).Name} does not have a PacketInfo attribute.");
         this.Mapper.Add(id!.Value, typeof(T));
         return this;
     }
     
-    private bool GetId<T>(out ushort? id) where T : PacketBase
+    private static bool GetId<T>(out ushort? id) where T : PacketBase, new()
     {
         PacketInfo? packetInfo = typeof(T).GetCustomAttribute<PacketInfo>(false);
         id = packetInfo?.Id;
@@ -34,7 +34,7 @@ public class PacketMapper : IPacketMapper
 
 public interface IPacketMapper
 {
-    IPacketMapper Register<T>() where T : PacketBase;
+    IPacketMapper Register<T>() where T : PacketBase, new();
     Type? GetType(ushort id);
     List<Type> GetTypes();
 }

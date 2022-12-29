@@ -4,6 +4,7 @@ using Concentus.Enums;
 using Concentus.Structs;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using NetLib.Handlers.Server;
 using NetLib.Packets.Shared;
 using NetLib.Server;
 
@@ -28,10 +29,10 @@ public class VoiceDataHandler
         this.Latency = latency;
         this.DurationMultiplier = durationMultiplier;
         
-        this.FrameSize = this.WaveFormat.ConvertLatencyToByteSize(this.Latency * this.DurationMultiplier);
+        this.FrameSize = this.WaveFormat.ConvertLatencyToByteSize(this.Latency);
         
-        this.PcmBuffer = new short[this.FrameSize];
-        this.OpusBuffer = new byte[this.FrameSize];
+        this.PcmBuffer = new short[this.FrameSize * this.WaveFormat.ConvertLatencyToByteSize(this.DurationMultiplier)];
+        this.OpusBuffer = new byte[this.FrameSize * this.WaveFormat.ConvertLatencyToByteSize(this.DurationMultiplier)];
 
         this.Decoder = OpusDecoder.Create(this.WaveFormat.SampleRate, this.WaveFormat.Channels);
         this.Encoder = OpusEncoder.Create(this.WaveFormat.SampleRate, this.WaveFormat.Channels, OpusApplication.OPUS_APPLICATION_VOIP);
@@ -62,10 +63,11 @@ public class VoiceDataHandler
     {
         short[] data = MemoryMarshal.Cast<byte, short>(pcm).ToArray();
         int offset = 0;
-        int pcmSliceSize = this.FrameSize / this.DurationMultiplier / 2; // We need to divide by 2 because we are working with shorts
+        int pcmSliceSize = this.FrameSize / 2; // We need to divide by 2 because we are working with shorts
         int[] bufferOffsets = new int[this.DurationMultiplier];
         
         Array.Clear(this.OpusBuffer, 0, this.OpusBuffer.Length);
+        Console.WriteLine(pcmSliceSize);
         
         for (int i = 0; i < this.DurationMultiplier; i++)
         {
@@ -90,14 +92,19 @@ public class VoiceDataClientHandler : IPacketReceivedHandler
     private WaveFormat WaveFormat { get; }
     private WaveOutEvent WaveOut { get; }
     
+    private int Latency { get; }
+    private int DurationMultiplier { get; }
+    
     private BufferedWaveProvider BufferedWaveProvider { get; }
 
-    public VoiceDataClientHandler()
+    public VoiceDataClientHandler(WaveFormat waveFormat, int latency, int durationMultiplier)
     {
-        this.WaveFormat = new WaveFormat(48000, 16, 1);
-        this.VoiceDataHandler = new VoiceDataHandler(this.WaveFormat, 20, 3);
+        this.WaveFormat = waveFormat;
+        this.Latency = latency;
+        this.DurationMultiplier = durationMultiplier;
+        this.VoiceDataHandler = new VoiceDataHandler(this.WaveFormat, this.Latency, this.DurationMultiplier);
         this.BufferedWaveProvider = new BufferedWaveProvider(this.WaveFormat);
-        this.BufferedWaveProvider.BufferDuration = TimeSpan.FromMilliseconds(this.VoiceDataHandler.Latency * this.VoiceDataHandler.DurationMultiplier);
+        this.BufferedWaveProvider.BufferDuration = TimeSpan.FromMilliseconds(this.VoiceDataHandler.Latency * this.VoiceDataHandler.DurationMultiplier*2);
         this.BufferedWaveProvider.BufferLength = this.VoiceDataHandler.FrameSize * this.VoiceDataHandler.DurationMultiplier * 5;
         this.WaveOut = new WaveOutEvent();
         this.WaveOut.Init(this.BufferedWaveProvider);

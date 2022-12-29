@@ -7,16 +7,16 @@ using CSCore.SoundIn;
 using NetLib.Packets.Shared;
 using NetLib.Server;
 
-namespace NetLib.Handlers;
+namespace NetLib.Handlers.Client;
 
-public class VoiceDataEventHandler
+public class VoiceRecorder
 {
     private WaveFormat WaveFormat { get; } = new WaveFormat(48000, 16, 1);
     private BaseClient Client { get; }
     private int BufferSize { get; }
     private OpusEncoder Encoder { get; }
     private byte[] Buffer { get; }
-    private ushort FrameMultiplier => 3;
+    private ushort FrameMultiplier => 5;
     private int FrameDuration => 20;
     private int FrameSize { get; }
     private int[] BufferOffsets { get; }
@@ -27,9 +27,11 @@ public class VoiceDataEventHandler
 
     private uint Sequence { get; set; } = 0;
     
-    public VoiceDataEventHandler(BaseClient client)
+    public VoiceRecorder(BaseClient client)
     {
         this.Client = client;
+        this.Client.RegisterOnDisconnect(this.OnClientDisconnect);
+        
         this.WaveIn = new WaveIn(this.WaveFormat);
         this.WaveIn.DataAvailable += this.WaveIn_DataAvailable;
         this.WaveIn.Latency = this.FrameDuration * this.FrameMultiplier;
@@ -41,7 +43,6 @@ public class VoiceDataEventHandler
         this.Encoder = OpusEncoder.Create(this.WaveFormat.SampleRate, this.WaveFormat.Channels, OpusApplication.OPUS_APPLICATION_AUDIO);
         this.Encoder.Bandwidth = OpusBandwidth.OPUS_BANDWIDTH_AUTO;
         this.Encoder.SignalType = OpusSignal.OPUS_SIGNAL_VOICE;
-        this.Encoder.UseVBR = false;
         Console.WriteLine($"VBR: {this.Encoder.UseVBR} | VBRConstraint: {this.Encoder.UseConstrainedVBR} | Complexity: {this.Encoder.Complexity} | Bitrate: {this.Encoder.Bitrate} | DTX: {this.Encoder.UseDTX} | FEC: {this.Encoder.UseInbandFEC} | PacketLossPercentage: {this.Encoder.PacketLossPercent} | Mode {this.Encoder.ForceMode} | SignalType: {this.Encoder.SignalType} | Bandwidth: {this.Encoder.Bandwidth}");
 
         this.Buffer = new byte[this.BufferSize];
@@ -73,7 +74,7 @@ public class VoiceDataEventHandler
 
             Span<byte> buffer = this.Buffer.AsSpan(0, offset);
             this.Client.SendPacket(
-                new VoiceDataPacket(buffer.ToArray(), this.BufferOffsets, this.LastPacketTimeSpan, this.Sequence)
+                new VoiceDataPacket(buffer.ToArray(), this.BufferOffsets, this.LastPacketTimeSpan, this.Sequence, this.Client.Id)
             );
             this.LastPacketTimeSpan += TimeSpan.FromMilliseconds(this.WaveIn.Latency);
             //Console.WriteLine($"Sending voice packet with {buffer.Length} bytes and sequence {this.Sequence} at {this.PacketStopWatch.ElapsedMilliseconds} ms");
@@ -84,5 +85,11 @@ public class VoiceDataEventHandler
             Console.WriteLine(exception);
             throw;
         }
+    }
+    
+    private void OnClientDisconnect(BaseClient client)
+    {
+        this.WaveIn.Stop();
+        this.WaveIn.Dispose();
     }
 }

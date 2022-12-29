@@ -27,8 +27,6 @@ public class TcpClient : BaseClient
         this.Socket = socket;
         this.IsConnected = true;
         this.Socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
-        // Start listening for incoming data asynchronously until the socket is closed
-        Task.Factory.StartNew(ListenAsync);
     }
     
     public TcpClient(IPEndPoint serverEndPoint, IPacketSerializer packetSerializer) : base(packetSerializer)
@@ -38,22 +36,22 @@ public class TcpClient : BaseClient
         this.Socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
         this.Socket.Connect(serverEndPoint);
         this.IsConnected = true;
-        // Start listening for incoming data asynchronously until the socket is closed
-        Task.Factory.StartNew(ListenAsync);
     }
 
     protected override void ListenAsync()
     {
+        Console.WriteLine($"Listening for incoming data from Thread {Thread.CurrentThread.ManagedThreadId}");
         while (this.IsConnected)
         {
             try
             {
                 this.ReadBytes = this.Socket.Receive(this._socketBuffer);
+                Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} received {this.ReadBytes} bytes");
                 Task.Factory.StartNew(this.ReceivePacket).ContinueWith(task =>
                 {
                     if (task.IsFaulted) Console.WriteLine(task.Exception);
                 });
-                //Thread.Sleep(100);
+                
             }
             catch (SocketException socketException)
             {
@@ -65,34 +63,23 @@ public class TcpClient : BaseClient
     private void ReceivePacket()
     {
         // Copy the received data into a new array of the exact size
-        if (this.IsConnected)
-        {
-            byte[] data = new byte[this.ReadBytes];
-            Array.Copy(this._socketBuffer, data, this.ReadBytes);
-            this.InvokeOnReceive(data);
-        }
-        else
-        {
-            this.Disconnect();
-        }
+        if (!this.IsConnected) return;
+        
+        byte[] data = new byte[this.ReadBytes];
+        Array.Copy(this._socketBuffer, data, this.ReadBytes);
+        this.InvokeOnReceive(data);
     }
     
     public override void SendPacket<T>(T packet)
     {
-        if (this.IsConnected)
+        if (!this.IsConnected) return;
+        
+        byte[] packetBytes = this.PacketSerializer.Serialize(packet);
+        lock(this.Socket)
         {
-            byte[] packetBytes = this.PacketSerializer.Serialize(packet);
-            lock(this.Socket)
-            {
-                this.Socket.Send(packetBytes);
-            }
-            this.InvokeOnSend(packet);
-            
+            this.Socket.Send(packetBytes);
         }
-        else
-        {
-            this.Disconnect();
-        }
+        this.InvokeOnSend(packet);
     }
 
     public override void Disconnect()

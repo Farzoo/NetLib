@@ -1,24 +1,21 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections;
 using NetLib.Packets.Shared;
 using NetLib.Server;
 
-namespace NetLib.Handlers;
+namespace NetLib.Handlers.Client;
 
-public class PacketHandlerManager
+public class PacketHandlerClientManager : IPacketHandlerManager
 {
-    public IDictionary<ushort, IList<IPacketReceivedHandler>> ReceivedHandlers { get; } = new Dictionary<ushort, IList<IPacketReceivedHandler>>();
-    public IDictionary<ushort, IList<IPacketSentHandler>> SentHandlers { get; } = new Dictionary<ushort, IList<IPacketSentHandler>>();
+    private IDictionary<ushort, IList<IPacketReceivedHandler>> ReceivedHandlers { get; } = new Dictionary<ushort, IList<IPacketReceivedHandler>>();
+    private IDictionary<ushort, IList<IPacketSentHandler>> SentHandlers { get; } = new Dictionary<ushort, IList<IPacketSentHandler>>();
 
-    public IPacketSerializer Serializer { get; }
+    private IPacketSerializer Serializer { get; }
 
-    private IClientEvent ClientEventManager { get; }
-    
-    public PacketHandlerManager(IClientEvent clientEventManager, IPacketSerializer serializer)
+    public PacketHandlerClientManager(BaseClient client, IPacketSerializer serializer)
     {
-        this.ClientEventManager = clientEventManager;
-        this.ClientEventManager.OnClientConnected(this.OnConnected);
-        this.ClientEventManager.OnClientDisconnected(this.OnDisconnected);
+        client.RegisterOnReceive(this.OnReceive);
+        client.RegisterOnSend(this.OnSend);
+
         this.Serializer = serializer;
     }
     public void RegisterPacketReceivedHandler(IPacketReceivedHandler handler)
@@ -52,28 +49,28 @@ public class PacketHandlerManager
             handlers.Add(handler);
         }
     }
-    
-    public void OnConnected(BaseClient baseBaseClient)
-    {
-        Console.WriteLine("Nouvelle connexion");
-        baseBaseClient.RegisterOnReceive(this.OnReceive);
-    }
-    
-    public void OnDisconnected(BaseClient baseBaseClient)
-    {
-        baseBaseClient.UnregisterOnReceive(this.OnReceive);
-    }
-    
-    public void OnReceive(BaseClient baseBaseClient, byte[] data)
+
+    private void OnReceive(BaseClient client, byte[] data)
     {
         PacketBase packet = this.Serializer.Deserialize(data);
+        
         this.ReceivedHandlers.TryGetValue(packet.Id, out var handlers);
-        handlers?.ToList().ForEach(x => x.OnPacketReceived(baseBaseClient, packet));
+        if(handlers is null) return;
+        
+        foreach (var packetReceivedHandler in handlers)
+        {
+            packetReceivedHandler.OnPacketReceived(client, packet);    
+        }
     }
-    
-    public void OnSend(BaseClient baseBaseClient, PacketBase packetBase)
+
+    private void OnSend(BaseClient client, PacketBase packetBase)
     {
         this.SentHandlers.TryGetValue(packetBase.Id, out var handlers);
-        handlers?.ToList().ForEach(x => x.OnPacketSent(baseBaseClient, packetBase));
+        if(handlers is null) return;
+
+        foreach (var packetSentHandler in handlers)
+        {
+            packetSentHandler.OnPacketSent(client, packetBase);    
+        }
     }
 }

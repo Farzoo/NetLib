@@ -1,6 +1,4 @@
-﻿using System.Collections;
-
-namespace NetLib.Audio;
+﻿namespace NetLib.Struct;
 
 public class BiDirectionalCircularBuffer<T> where T : struct
 {
@@ -20,12 +18,13 @@ public class BiDirectionalCircularBuffer<T> where T : struct
 
     public int WriteHead(T[] buffer, int offset, int count)
     {
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
-            if (_head == _tail &&  _count > 0)
+            if (_head == _tail && _count > 0)
             {
                 return i;
             }
+
             _buffer[_head] = buffer[offset + i];
             _head = (_head + 1) % _capacity;
             _count++;
@@ -33,10 +32,10 @@ public class BiDirectionalCircularBuffer<T> where T : struct
 
         return count;
     }
-    
+
     public int WriteTail(T[] buffer, int offset, int count)
     {
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             if (_head == _tail && _count > 0)
             {
@@ -47,13 +46,13 @@ public class BiDirectionalCircularBuffer<T> where T : struct
             _buffer[_tail] = buffer[offset + i];
             _count++;
         }
-        
+
         return count;
     }
 
     public int WriteTailValue(T value, int count)
     {
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             if (_head == _tail && _count > 0)
             {
@@ -64,24 +63,24 @@ public class BiDirectionalCircularBuffer<T> where T : struct
             _buffer[_tail] = value;
             _count++;
         }
-        
+
         return count;
     }
-    
+
     public int WriteHeadValue(T value, int count)
     {
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             if (_head == _tail && _count > 0)
             {
                 return i;
             }
 
-            _tail = (_tail - 1 + _capacity) % _capacity;
-            _buffer[_tail] = value;
+            _head = (_head + 1) % _capacity;
+            _buffer[_head] = value;
             _count++;
         }
-        
+
         return count;
     }
 
@@ -92,7 +91,7 @@ public class BiDirectionalCircularBuffer<T> where T : struct
         while (_count > 0 && count > 0)
         {
             buffer[offset + i] = _buffer[_tail];
-            _buffer[_tail] = default(T);
+            _buffer[_tail] = default;
             _tail = (_tail + 1) % _capacity;
             i++;
             count--;
@@ -101,7 +100,7 @@ public class BiDirectionalCircularBuffer<T> where T : struct
 
         return i;
     }
-    
+
     public int Peek(T[] buffer, int offset, int count)
     {
         int i = 0;
@@ -122,7 +121,7 @@ public class BiDirectionalCircularBuffer<T> where T : struct
         int i = 0;
         while (_count > 0 && count > 0)
         {
-            _buffer[_tail] = default(T);
+            _buffer[_tail] = default;
             _tail = (_tail + 1) % _capacity;
             i++;
             count--;
@@ -131,29 +130,20 @@ public class BiDirectionalCircularBuffer<T> where T : struct
 
         return i;
     }
-    
+
     public int Count
     {
         get => _count;
     }
-    
+
     public int Capacity
     {
         get { return _capacity; }
     }
-    
+
     public void Clear()
     {
         _head = _capacity / 2;
         _tail = _head;
-    }
-    
-    private static void printBuffer(T[] buffer, int offset, int count)
-    {
-        for (var i = offset; i < offset + count; i++)
-        {
-            Console.Write(buffer[i] + " ");
-        }
-        Console.WriteLine();
     }
 }

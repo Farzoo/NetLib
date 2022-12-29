@@ -8,7 +8,7 @@ namespace NetLib.Packets.Shared;
 public class VoiceDataPacket : PacketBase
 {
     public override ushort Id => (ushort) PacketType.VoiceData;
-    
+
     [ProtoMember(1)]
     public byte[] Data { get; }
     
@@ -20,16 +20,23 @@ public class VoiceDataPacket : PacketBase
     
     [ProtoMember(4)]
     public ulong Sequence { get; }
-    public VoiceDataPacket(byte[] data, int[] dataOffsets, TimeSpan time, uint sequence)
+    
+    [ProtoMember(5)]
+    public Guid EntityId { get; set; }
+    
+    public VoiceDataPacket(byte[] data, int[] dataOffsets, TimeSpan time, uint sequence, Guid entityId)
     {
         this.Data = data;
         this.DataOffsets = dataOffsets;
         this.Time = time;
         this.Sequence = sequence;
+        this.EntityId = entityId;
     }
+    
 
     public VoiceDataPacket()
     {
+        this.EntityId = Guid.Empty;
         this.Data = Array.Empty<byte>();
         this.DataOffsets = Array.Empty<int>();
         this.Time = TimeSpan.Zero;

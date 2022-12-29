@@ -1,5 +1,5 @@
 ﻿using NAudio.Wave;
-using NetLib.Audio;
+using NetLib.Struct;
 using WaveFormat = NAudio.Wave.WaveFormat;
 
 namespace NetLib.Handlers;
