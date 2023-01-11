@@ -153,8 +153,7 @@ public class JitterBuffer : IWaveProvider
 
     private void AddLateSamples(SamplesHolder samplesHolder)
     {
-        int bufferOffset =
-            this.ComputeFrameSize((int) (samplesHolder.TimeSpan - this.ComputeBufferDuration(samplesHolder.Buffer, samplesHolder.Offset, samplesHolder.Count)).TotalMilliseconds);
+        int bufferOffset = this.ComputeFrameSize((int) (samplesHolder.TimeSpan - this.ComputeBufferDuration(samplesHolder.Buffer, samplesHolder.Offset, samplesHolder.Count)).TotalMilliseconds);
         this.Buffer.WriteTailValue(0, bufferOffset);
         this.Buffer.WriteTail(samplesHolder.Buffer, samplesHolder.Offset, samplesHolder.Count);
         this.FirstPacket = samplesHolder;
@@ -173,7 +172,6 @@ public class JitterBuffer : IWaveProvider
     {
         this.Lock.Wait();
         int length = this.Buffer.Peek(buffer, offset, count);
-        Console.WriteLine($"Read {length} bytes");
         if(length == 0)
         {
             this.Reset();
@@ -202,63 +200,5 @@ public class JitterBuffer : IWaveProvider
         this.IsReset = true;
     }
     
-    /*public bool AddSamples(byte[] buffer, int offset, int count, TimeSpan timeSpan, ulong sequence)
-    {
-        this.Lock.Wait();
-        if (this.IsFirstPacket)
-        {
-            this.LastValidTimeSpan = timeSpan;
-            this.LastValidSequence = sequence;
-            this.LastValidBufferDuration = ComputeBufferDuration(buffer, offset, count);
-            this.CircularBuffer.Write(buffer, offset, count);
-            this.CircularBuffer
-            this.IsFirstPacket = false;
-        }
-        else if (sequence <= this.LastValidSequence)
-        {
-            this.Lock.Release();
-            return false;
-        }
-        
-        else if (this.LastValidSequence + 1 != sequence && !this._earlySamples.ContainsKey(sequence))
-        {
-            this._earlySamples.Add(sequence, new SamplesHolder(buffer, offset, count, timeSpan, sequence));
-        }
-        else
-        {
-            this.ForceAddSamples(buffer, offset, count, timeSpan, sequence);
-            this.ReorganizeBufferWithEarlySamples();
-        }
-        this.Lock.Release();
-        return true;
-    }
-    private void ForceAddSamples(byte[] buffer, int offset, int count, TimeSpan timeSpan, ulong sequence)
-    {
-        this.CircularBuffer.Advance(this.WaveFormat.ConvertLatencyToByteSize((int) (timeSpan - this.LastValidTimeSpan + this.LastValidBufferDuration).TotalMilliseconds));
-        this.LastValidTimeSpan = timeSpan;
-        this.LastValidSequence = sequence;
-        this.LastValidBufferDuration = ComputeBufferDuration(buffer, offset, count);
-        this.Counter += this.CircularBuffer.Write(buffer, offset, count);
-        if (this.Counter >= this.FrameSize)
-        {
-            this.Counter -= this.FrameSize;
-            this.CircularBuffer.Read(this._dataAvailableBuffer, 0, this.FrameSize);
-            this.DataAvailable?.Invoke(this._dataAvailableBuffer);
-        }
-    }
-    private void ForceAddSamples(SamplesHolder samplesHolder)
-    {
-        this.ForceAddSamples(samplesHolder.Buffer, samplesHolder.Offset, samplesHolder.Count, samplesHolder.TimeSpan, samplesHolder.Sequence);
-        this._earlySamples.Remove(samplesHolder.Sequence);
-    }
-
-    private void ReorganizeBufferWithEarlySamples()
-    {
-        while (this._earlySamples.TryGetValue(this.LastValidSequence + 1, out var samplesHolder))
-        {
-            this.ForceAddSamples(samplesHolder);
-        }
-    }*/
-
-    private record SamplesHolder(byte[] Buffer, int Offset, int Count, TimeSpan TimeSpan, ulong Sequence);
+    private sealed record SamplesHolder(byte[] Buffer, int Offset, int Count, TimeSpan TimeSpan, ulong Sequence);
 }

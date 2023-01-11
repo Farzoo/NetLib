@@ -40,25 +40,24 @@ public class PacketSerializer : IPacketSerializer
     {
         bool hasParameterlessConstructor = type.GetConstructors().Any(c => c.GetParameters().Length == 0);
         if(!hasParameterlessConstructor)
-            throw new Exception("Packet type must have a parameterless constructor");
+            throw new ArgumentException("Packet type must have a parameterless constructor");
     }
 
-    private ushort RegisterTypeForBaseType(Type type)
+    private void RegisterTypeForBaseType(Type type)
     {
         if(type.BaseType == null || type.BaseType != typeof(PacketBase))
-            throw new Exception($"Cannot register {type.Name} for serializer. It must inherit from PacketBase");
+            throw new ArgumentException($"Cannot register {type.Name} for serializer. It must inherit from PacketBase");
         PacketInfo? packetInfo = type.GetCustomAttribute<PacketInfo>(false);
         if (packetInfo == null)
-            throw new Exception($"{type.Name} must have a PacketInfo");
+            throw new ArgumentException($"{type.Name} must have a PacketInfo");
         MetaType thisType = RuntimeTypeModel.Default[type];
         MetaType baseType = RuntimeTypeModel.Default[type.BaseType];
         if (baseType.GetSubtypes().All(s => s.DerivedType != thisType))
         {
             if(baseType.GetSubtypes().Any(s => s.FieldNumber == packetInfo.Id))
-                throw new Exception("Packet id already registered for another packet");
+                throw new ArgumentException("Packet id already registered for another packet");
             baseType.AddSubType(packetInfo.Id + 1, type);
         }
-        return packetInfo.Id;
     }
 
     public PacketBase Deserialize(byte[] data)

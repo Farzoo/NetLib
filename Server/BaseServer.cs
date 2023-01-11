@@ -21,7 +21,7 @@ public abstract class BaseServer : IClientEvent
 
     protected event IClientEvent.ClientDisconnectedHandler? ClientDisconnected;
 
-    public BaseServer(IPEndPoint hostIp, SocketType socketType, ProtocolType protocolType, IPacketMapper packetMapper, IPacketSerializer packetSerializer)
+    protected BaseServer(IPEndPoint hostIp, SocketType socketType, ProtocolType protocolType, IPacketMapper packetMapper, IPacketSerializer packetSerializer)
     {
         this.HostIpEndPoint = hostIp;
         this.Socket = new Socket(AddressFamily.InterNetworkV6, socketType, protocolType);
@@ -48,6 +48,7 @@ public abstract class BaseServer : IClientEvent
     {
         this.Clients.Remove(baseClient);
         baseClient.UnregisterOnDisconnect(this.DisconnectClient);
+        this.ClientDisconnected?.Invoke(baseClient);
     }
 
     protected virtual void ConnectClient(BaseClient baseClient)

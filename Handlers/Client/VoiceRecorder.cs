@@ -39,9 +39,9 @@ public class VoiceRecorder
         this.BufferSize = this.WaveFormat.SampleRate * this.WaveFormat.Channels * this.FrameDuration * this.FrameMultiplier / 1000;
         this.FrameSize = (int) this.WaveFormat.MillisecondsToBytes(this.FrameDuration * this.FrameMultiplier);
         
-        Console.WriteLine(this.BufferSize);
         this.Encoder = OpusEncoder.Create(this.WaveFormat.SampleRate, this.WaveFormat.Channels, OpusApplication.OPUS_APPLICATION_AUDIO);
         this.Encoder.Bandwidth = OpusBandwidth.OPUS_BANDWIDTH_AUTO;
+        //this.Encoder.Bitrate = 192000;
         this.Encoder.SignalType = OpusSignal.OPUS_SIGNAL_VOICE;
         Console.WriteLine($"VBR: {this.Encoder.UseVBR} | VBRConstraint: {this.Encoder.UseConstrainedVBR} | Complexity: {this.Encoder.Complexity} | Bitrate: {this.Encoder.Bitrate} | DTX: {this.Encoder.UseDTX} | FEC: {this.Encoder.UseInbandFEC} | PacketLossPercentage: {this.Encoder.PacketLossPercent} | Mode {this.Encoder.ForceMode} | SignalType: {this.Encoder.SignalType} | Bandwidth: {this.Encoder.Bandwidth}");
 
@@ -50,7 +50,6 @@ public class VoiceRecorder
 
         this.WaveIn.Initialize();
         this.WaveIn.Start();
-        this.PacketStopWatch.Start();
     }
 
     private void WaveIn_DataAvailable(object sender, DataAvailableEventArgs e)
@@ -77,7 +76,8 @@ public class VoiceRecorder
                 new VoiceDataPacket(buffer.ToArray(), this.BufferOffsets, this.LastPacketTimeSpan, this.Sequence, this.Client.Id)
             );
             this.LastPacketTimeSpan += TimeSpan.FromMilliseconds(this.WaveIn.Latency);
-            //Console.WriteLine($"Sending voice packet with {buffer.Length} bytes and sequence {this.Sequence} at {this.PacketStopWatch.ElapsedMilliseconds} ms");
+            
+            Console.WriteLine($"Sending voice packet with {buffer.Length} bytes and sequence {this.Sequence} with {this.WaveIn.Latency} ms");
             this.Sequence++;
         }
         catch (Exception exception)

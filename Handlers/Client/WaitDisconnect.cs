@@ -4,7 +4,7 @@ namespace NetLib.Handlers.Client;
 
 public class WaitDisconnect
 {
-    private ManualResetEventSlim _waitHandle = new ManualResetEventSlim(false);
+    private readonly ManualResetEventSlim _waitHandle = new ManualResetEventSlim(false);
 
     public WaitDisconnect(BaseClient client)
     {

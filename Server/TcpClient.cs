@@ -8,7 +8,7 @@ public class TcpClient : BaseClient
 {
     private Socket Socket { get; }
     
-    private byte[] _socketBuffer = new byte[PacketBase.MaxPacketSize];
+    private readonly byte[] _socketBuffer = new byte[PacketBase.MaxPacketSize];
 
     private int ReadBytes { get; set; } 
 
@@ -40,13 +40,11 @@ public class TcpClient : BaseClient
 
     protected override void ListenAsync()
     {
-        Console.WriteLine($"Listening for incoming data from Thread {Thread.CurrentThread.ManagedThreadId}");
         while (this.IsConnected)
         {
             try
             {
                 this.ReadBytes = this.Socket.Receive(this._socketBuffer);
-                Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} received {this.ReadBytes} bytes");
                 Task.Factory.StartNew(this.ReceivePacket).ContinueWith(task =>
                 {
                     if (task.IsFaulted) Console.WriteLine(task.Exception);
@@ -73,13 +71,20 @@ public class TcpClient : BaseClient
     public override void SendPacket<T>(T packet)
     {
         if (!this.IsConnected) return;
-        
-        byte[] packetBytes = this.PacketSerializer.Serialize(packet);
-        lock(this.Socket)
+
+        try
         {
-            this.Socket.Send(packetBytes);
+            byte[] packetBytes = this.PacketSerializer.Serialize(packet);
+            lock (this.Socket)
+            {
+                this.Socket.Send(packetBytes);
+            }
+            this.InvokeOnSend(packet);
         }
-        this.InvokeOnSend(packet);
+        catch (SocketException exception)
+        {
+            this.Disconnect();
+        }
     }
 
     public override void Disconnect()

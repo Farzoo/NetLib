@@ -20,7 +20,7 @@ public class ClientVoiceOut : IDisposable
 
         this.Format = waveFormat;
         
-        this.JitterBuffer = new JitterBuffer(this.Format, latency * durationMultiplier);
+        this.JitterBuffer = new JitterBuffer(this.Format, latency * durationMultiplier * 4);
 
         this.VolumeWaveProvider = new VolumeWaveProvider16(this.JitterBuffer)
         {
@@ -43,8 +43,8 @@ public class ClientVoiceOut : IDisposable
         this.JitterBuffer.AddSamples(decoded.ToArray(), 0, decoded.Length, packet.Sequence, packet.Time);
         this.WaveOutEvent.Play();
     }
-    
-    public void Stop()
+
+    private void Stop()
     {
         this.WaveOutEvent.Stop();
         this.WaveOutEvent.Dispose();
@@ -52,7 +52,13 @@ public class ClientVoiceOut : IDisposable
 
     public void Dispose()
     {
-        WaveOutEvent.Stop();
-        WaveOutEvent.Dispose();
+        this.Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    
+    protected virtual void Dispose(bool disposing)
+    {
+        // Cleanup
+        this.Stop();
     }
 }

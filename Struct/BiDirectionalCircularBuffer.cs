@@ -131,6 +131,12 @@ public class BiDirectionalCircularBuffer<T> where T : struct
         return i;
     }
 
+    public void Clear()
+    {
+        _head = _capacity / 2;
+        _tail = _head;
+    }
+
     public int Count
     {
         get => _count;
@@ -139,11 +145,5 @@ public class BiDirectionalCircularBuffer<T> where T : struct
     public int Capacity
     {
         get { return _capacity; }
-    }
-
-    public void Clear()
-    {
-        _head = _capacity / 2;
-        _tail = _head;
     }
 }

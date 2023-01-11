@@ -14,7 +14,7 @@ public class ChatMessagePacket : PacketBase
 
     public ChatMessagePacket() : base()
     {
-        this.Message = "";
+        this.Message = string.Empty;
     }
 
     public ChatMessagePacket(string message) : base()
@@ -47,4 +47,5 @@ public class ChatMessagePacket : PacketBase
         return new ChatMessagePacket(message);
     }
     
-}*/
+}
+*/

@@ -9,7 +9,7 @@ public class UdpClient : BaseClient
 {
     public override bool IsConnected { get; protected set; } = true;
     
-    private byte[] _buffer = new byte[PacketBase.MaxPacketSize];
+    private readonly byte[] _buffer = new byte[PacketBase.MaxPacketSize];
     protected Socket ListenSocket { get; }
     protected Socket SendSocket { get; }
 

@@ -55,11 +55,13 @@ public class PacketHandlerServerManager : IPacketHandlerManager
     {
         Console.WriteLine("Nouvelle connexion");
         baseBaseClient.RegisterOnReceive(this.OnReceive);
+        baseBaseClient.RegisterOnSend(this.OnSend);
     }
 
     private void OnDisconnected(BaseClient baseBaseClient)
     {
         baseBaseClient.UnregisterOnReceive(this.OnReceive);
+        baseBaseClient.UnregisterOnSend(this.OnSend);
     }
 
     private void OnReceive(BaseClient client, byte[] data)
