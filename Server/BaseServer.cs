@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using NetLib.Packets;
-using NetLib.Packets.Shared;
 
 namespace NetLib.Server;
 
@@ -12,23 +11,20 @@ public abstract class BaseServer : IClientEvent
     protected IPEndPoint HostIpEndPoint { get; }
     protected ISet<BaseClient> Clients { get; }
     public bool IsRunning { get; private set; }
-    
-    protected IPacketMapper PacketMapper { get; }
-    
+
     protected IPacketSerializer PacketSerializer { get; }
     
     protected event IClientEvent.ClientConnectedHandler? ClientConnected;
 
     protected event IClientEvent.ClientDisconnectedHandler? ClientDisconnected;
 
-    protected BaseServer(IPEndPoint hostIp, SocketType socketType, ProtocolType protocolType, IPacketMapper packetMapper, IPacketSerializer packetSerializer)
+    protected BaseServer(IPEndPoint hostIp, SocketType socketType, ProtocolType protocolType, IPacketSerializer packetSerializer)
     {
         this.HostIpEndPoint = hostIp;
         this.Socket = new Socket(AddressFamily.InterNetworkV6, socketType, protocolType);
         this.Socket.DualMode = true;
         this.Socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
         this.Clients = new HashSet<BaseClient>();
-        this.PacketMapper = packetMapper;
         this.PacketSerializer = packetSerializer;
     }
 
@@ -58,7 +54,7 @@ public abstract class BaseServer : IClientEvent
         this.ClientConnected?.Invoke(baseClient);
     }
 
-    public virtual void Broadcast<T>(T packet, BaseClient? except = null) where T : PacketBase
+    public virtual void Broadcast<T>(T packet, BaseClient? except = null) where T : BasePacket
     {
 
         foreach (BaseClient client in this.Clients)

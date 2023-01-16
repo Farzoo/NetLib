@@ -1,5 +1,7 @@
-﻿using System.Net.Sockets;
-using NetLib.Packets.Shared;
+﻿using System.Collections.Immutable;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using NetLib.Packets;
 
 namespace NetLib.Server;
 
@@ -11,19 +13,20 @@ public abstract class BaseClient
     public delegate void OnReceiveHandler(BaseClient baseClient, byte[] data);
     private event OnReceiveHandler? OnReceive;
 
-    public delegate void OnSendHandler(BaseClient baseClient, PacketBase packet);
+    public delegate void OnSendHandler(BaseClient baseClient, BasePacket basePacket);
     protected event OnSendHandler? OnSend;
     
     public delegate void OnDisconnectHandler(BaseClient baseClient);
     private event OnDisconnectHandler? OnDisconnect;
     public Guid Id { get; } = Guid.NewGuid();
+    
+    protected static readonly int MaxPacketSize = 16384;
 
     public bool IsListening { get; private set; } = false;
 
     protected BaseClient(IPacketSerializer packetSerializer)
     {
         this.PacketSerializer = packetSerializer;
-        // Start listening for incoming data asynchronously until the socket is closed
     }
 
     public void StartListening()
@@ -36,7 +39,7 @@ public abstract class BaseClient
     }
     protected abstract void ListenAsync();
 
-    public abstract void SendPacket<T>(T packet) where T : PacketBase;
+    public abstract void SendPacket<T>(T packet) where T : BasePacket;
 
     public abstract void Disconnect();
 
@@ -70,9 +73,9 @@ public abstract class BaseClient
         this.OnDisconnect -= handler;
     }
 
-    protected virtual void InvokeOnSend(PacketBase packet)
+    protected virtual void InvokeOnSend(BasePacket basePacket)
     {
-        OnSend?.Invoke(this, packet);
+        OnSend?.Invoke(this, basePacket);
     }
 
     protected virtual void InvokeOnDisconnect()

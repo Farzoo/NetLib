@@ -1,6 +1,4 @@
-﻿using NetLib.Server;
-
-namespace NetLib;
+﻿namespace NetLib.Server;
 
 public interface IClientEvent
 {

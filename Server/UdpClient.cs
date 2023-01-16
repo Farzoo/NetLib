@@ -1,15 +1,16 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using NetLib.Packets;
-using NetLib.Packets.Shared;
 
 namespace NetLib.Server;
 
+// A CHANGER COMPLETEMENT
+// VOIR NAT PUNCH THROUGH
 public class UdpClient : BaseClient
 {
     public override bool IsConnected { get; protected set; } = true;
     
-    private readonly byte[] _buffer = new byte[PacketBase.MaxPacketSize];
+    private readonly byte[] _buffer = new byte[MaxPacketSize];
     protected Socket ListenSocket { get; }
     protected Socket SendSocket { get; }
 

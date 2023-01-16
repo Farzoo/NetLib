@@ -2,22 +2,21 @@
 using System.Net;
 using System.Net.Sockets;
 using NetLib.Packets;
-using NetLib.Packets.Shared;
 
 namespace NetLib.Server;
 
 public class UdpServer : BaseServer
 {
     private ISet<EndPoint> ClientsEndPoints { get; } = new HashSet<EndPoint>();
-    public UdpServer(IPEndPoint hostIp, IPacketMapper packetMapper, IPacketSerializer packetSerializer) : base(hostIp, SocketType.Dgram, ProtocolType.Udp, packetMapper, packetSerializer)
+    public UdpServer(IPEndPoint hostIp, IPacketSerializer packetSerializer) : base(hostIp, SocketType.Dgram, ProtocolType.Udp, packetSerializer)
     {
         this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
     }
 
     protected override void ListenConnection()
     {
-        Console.WriteLine($"Waiting for connection...");
-        byte[] buffer = new byte[PacketBase.MaxPacketSize];
+        /*Console.WriteLine($"Waiting for connection...");
+        byte[] buffer = new byte[IPacket.MaxPacketSize];
         EndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
         while (this.IsRunning)
         {
@@ -30,6 +29,6 @@ public class UdpServer : BaseServer
                 this.Clients.Last().StartListening();
                 Console.WriteLine($"Received packet from {remoteEndPoint}");
             }
-        }
+        }*/
     }
 }

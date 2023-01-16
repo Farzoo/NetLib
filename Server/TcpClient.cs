@@ -1,6 +1,10 @@
-﻿using System.Net;
+﻿using System.Buffers;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
-using NetLib.Packets.Shared;
+using System.Runtime.CompilerServices;
+using NetLib.Packets;
 
 namespace NetLib.Server;
 
@@ -8,12 +12,7 @@ public class TcpClient : BaseClient
 {
     private Socket Socket { get; }
     
-    private readonly byte[] _socketBuffer = new byte[PacketBase.MaxPacketSize];
-
-    private int ReadBytes { get; set; } 
-
     private bool _isConnected;
-
     public sealed override bool IsConnected
     {
         get => Socket.Connected && this._isConnected;
@@ -44,12 +43,14 @@ public class TcpClient : BaseClient
         {
             try
             {
-                this.ReadBytes = this.Socket.Receive(this._socketBuffer);
-                Task.Factory.StartNew(this.ReceivePacket).ContinueWith(task =>
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(MaxPacketSize);
+                // Receive data from the client asynchronously and store it in the buffer
+                int readBytes = this.Socket.Receive(buffer);
+                
+                Task.Factory.StartNew(() => this.ReceivePacket(buffer, readBytes)).ContinueWith(task =>
                 {
                     if (task.IsFaulted) Console.WriteLine(task.Exception);
                 });
-                
             }
             catch (SocketException socketException)
             {
@@ -58,14 +59,14 @@ public class TcpClient : BaseClient
         }
     }
 
-    private void ReceivePacket()
+    private void ReceivePacket(byte[] buffer, int readBytes)
     {
         // Copy the received data into a new array of the exact size
         if (!this.IsConnected) return;
-        
-        byte[] data = new byte[this.ReadBytes];
-        Array.Copy(this._socketBuffer, data, this.ReadBytes);
-        this.InvokeOnReceive(data);
+
+        this.InvokeOnReceive(buffer.AsSpan(0, readBytes).ToArray());
+
+        ArrayPool<byte>.Shared.Return(buffer);
     }
     
     public override void SendPacket<T>(T packet)

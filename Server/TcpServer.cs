@@ -1,13 +1,12 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using NetLib.Packets;
-using NetLib.Packets.Shared;
 
 namespace NetLib.Server;
 
 public class TcpServer : BaseServer
 {
-    public TcpServer(IPEndPoint hostIp, IPacketMapper packetMapper, IPacketSerializer packetSerializer) : base(hostIp, SocketType.Stream, ProtocolType.Tcp, packetMapper, packetSerializer)
+    public TcpServer(IPEndPoint hostIp, IPacketSerializer packetSerializer) : base(hostIp, SocketType.Stream, ProtocolType.Tcp, packetSerializer)
     {
     }
 
