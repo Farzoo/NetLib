@@ -9,7 +9,7 @@ public abstract class BaseServer : IClientEvent
     protected Socket Socket { get; }
     
     protected IPEndPoint HostIpEndPoint { get; }
-    protected ISet<BaseClient> Clients { get; }
+    protected ISet<IClient<BaseClient>> Clients { get; }
     public bool IsRunning { get; private set; }
 
     protected IPacketSerializer PacketSerializer { get; }
@@ -24,7 +24,7 @@ public abstract class BaseServer : IClientEvent
         this.Socket = new Socket(AddressFamily.InterNetworkV6, socketType, protocolType);
         this.Socket.DualMode = true;
         this.Socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
-        this.Clients = new HashSet<BaseClient>();
+        this.Clients = new HashSet<IClient<BaseClient>>();
         this.PacketSerializer = packetSerializer;
     }
 
@@ -40,24 +40,24 @@ public abstract class BaseServer : IClientEvent
 
     protected abstract void ListenConnection();
 
-    protected virtual void DisconnectClient(BaseClient baseClient)
+    protected virtual void DisconnectClient(IClient<BaseClient> client)
     {
-        this.Clients.Remove(baseClient);
-        baseClient.UnregisterOnDisconnect(this.DisconnectClient);
-        this.ClientDisconnected?.Invoke(baseClient);
+        this.Clients.Remove(client);
+        client.UnregisterOnDisconnect(this.DisconnectClient);
+        this.ClientDisconnected?.Invoke(client);
     }
 
-    protected virtual void ConnectClient(BaseClient baseClient)
+    protected virtual void ConnectClient(IClient<BaseClient> client)
     {
-        this.Clients.Add(baseClient);
-        baseClient.RegisterOnDisconnect(this.DisconnectClient);
-        this.ClientConnected?.Invoke(baseClient);
+        this.Clients.Add(client);
+        client.RegisterOnDisconnect(this.DisconnectClient);
+        this.ClientConnected?.Invoke(client);
     }
 
-    public virtual void Broadcast<T>(T packet, BaseClient? except = null) where T : BasePacket
+    public virtual void Broadcast<TPacket>(TPacket packet, IClient<BaseClient>? except = null) where TPacket : BasePacket
     {
 
-        foreach (BaseClient client in this.Clients)
+        foreach (IClient<BaseClient> client in this.Clients)
         {
             if (client != except)
             {

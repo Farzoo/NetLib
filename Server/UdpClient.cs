@@ -13,6 +13,8 @@ public class UdpClient : BaseClient
     private readonly byte[] _buffer = new byte[MaxPacketSize];
     protected Socket ListenSocket { get; }
     protected Socket SendSocket { get; }
+    
+    private static readonly int MaxPacketSize = 16384;
 
     public UdpClient(Socket listenSocket, EndPoint sendIpEndPoint, IPacketSerializer packetSerializer) : base(packetSerializer)
     {
@@ -62,6 +64,11 @@ public class UdpClient : BaseClient
     {
         //Console.WriteLine($"Sending packet {packet.GetType().Name}");
         this.SendSocket.Send(this.PacketSerializer.Serialize(packet));
+    }
+
+    public override void Connect()
+    {
+        throw new NotImplementedException();
     }
 
     public override void Disconnect()

@@ -18,6 +18,9 @@ public class TcpClient : BaseClient
         get => Socket.Connected && this._isConnected;
         protected set => this._isConnected = value;
     }
+    
+    // Max packet size
+    private static readonly int MaxPacketSize = 16384;
 
     public TcpClient(Socket socket, IPacketSerializer packetSerializer) : base(packetSerializer)
     {
@@ -86,6 +89,11 @@ public class TcpClient : BaseClient
         {
             this.Disconnect();
         }
+    }
+
+    public override void Connect()
+    {
+        throw new NotImplementedException();
     }
 
     public override void Disconnect()

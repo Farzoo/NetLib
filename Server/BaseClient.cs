@@ -1,26 +1,14 @@
-﻿using System.Collections.Immutable;
-using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using NetLib.Packets;
+﻿using NetLib.Packets;
 
 namespace NetLib.Server;
 
-public abstract class BaseClient
+public abstract class BaseClient : IClient<BaseClient>
 {
+    private event IClient<BaseClient>.OnReceiveHandler<BaseClient>? OnReceive;
+    private event IClient<BaseClient>.OnSendHandler<BaseClient>? OnSend;
+    private event IClient<BaseClient>.OnDisconnectHandler<BaseClient>? OnDisconnect;
     protected IPacketSerializer PacketSerializer { get; }
     public abstract bool IsConnected { get; protected set; }
-
-    public delegate void OnReceiveHandler(BaseClient baseClient, byte[] data);
-    private event OnReceiveHandler? OnReceive;
-
-    public delegate void OnSendHandler(BaseClient baseClient, BasePacket basePacket);
-    protected event OnSendHandler? OnSend;
-    
-    public delegate void OnDisconnectHandler(BaseClient baseClient);
-    private event OnDisconnectHandler? OnDisconnect;
-    public Guid Id { get; } = Guid.NewGuid();
-    
-    protected static readonly int MaxPacketSize = 16384;
 
     public bool IsListening { get; private set; } = false;
 
@@ -29,46 +17,46 @@ public abstract class BaseClient
         this.PacketSerializer = packetSerializer;
     }
 
-    public void StartListening()
+    public abstract void Connect();
+    public abstract void Disconnect();
+    
+    public virtual void StartListening()
     {
-        if(!this.IsListening)
-        {
-            this.IsListening = true;
-            Task.Factory.StartNew(this.ListenAsync);
-        }
+        if (this.IsListening) return;
+        this.IsListening = true;
+        Task.Factory.StartNew(this.ListenAsync);
     }
-    protected abstract void ListenAsync();
 
+    protected abstract void ListenAsync();
+    
     public abstract void SendPacket<T>(T packet) where T : BasePacket;
 
-    public abstract void Disconnect();
-
-    public void RegisterOnReceive(OnReceiveHandler handler)
+    public void RegisterOnReceive(IClient<BaseClient>.OnReceiveHandler<BaseClient> handler)
     {
         this.OnReceive += handler;
     }
     
-    public void RegisterOnSend(OnSendHandler? handler)
+    public void RegisterOnSend(IClient<BaseClient>.OnSendHandler<BaseClient>? handler)
     {
         this.OnSend += handler;
     }
     
-    public void UnregisterOnReceive(OnReceiveHandler handler)
+    public void UnregisterOnReceive(IClient<BaseClient>.OnReceiveHandler<BaseClient> handler)
     {
         this.OnReceive -= handler;
     }
     
-    public void UnregisterOnSend(OnSendHandler? handler)
+    public void UnregisterOnSend(IClient<BaseClient>.OnSendHandler<BaseClient>? handler)
     {
         this.OnSend -= handler;
     }
     
-    public void RegisterOnDisconnect(OnDisconnectHandler handler)
+    public void RegisterOnDisconnect(IClient<BaseClient>.OnDisconnectHandler<BaseClient> handler)
     {
         this.OnDisconnect += handler;
     }
     
-    public void UnregisterOnDisconnect(OnDisconnectHandler handler)
+    public void UnregisterOnDisconnect(IClient<BaseClient>.OnDisconnectHandler<BaseClient> handler)
     {
         this.OnDisconnect -= handler;
     }
